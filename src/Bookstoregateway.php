@@ -3,9 +3,42 @@
 class Bookstoregateway
 {
     private PDO $conn;
+    private TokenHandler $token;
 
-    public function __construct(Database $database){
+    public function __construct(Database $database, TokenHandler $token){
         $this->conn = $database->getConnection();
+        $this->token = $token;
+    }
+
+    public function generate_token($data) {
+        if(!empty($data["name"]) && !empty($data["password"])){
+            $sql = "SELECT * FROM users WHERE users.name = :name AND users.password = :password";
+
+        $stmt = $this->conn->prepare($sql);
+
+        $stmt->bindValue(":name",$data["name"]);
+        $stmt->bindValue(":password",$data["password"]);
+
+        $stmt->execute();
+
+        if($stmt->rowCount() < 1){
+            return "Invalid Request";
+        }
+        else{
+            $name = $data["name"];
+
+            $headers = array('alg'=>'HS256','typ'=>'JWT');
+            $payload = array('username'=>$name, 'exp'=>(time() + 600));
+
+            $jwt = $this->token->generate_jwt($headers, $payload);
+
+            return $jwt;
+         }
+        }
+
+        else{
+            return "Credentials Required.";        
+        }
     }
 
     public function getBooks(): array 
@@ -104,6 +137,79 @@ class Bookstoregateway
 
         return $stmt->rowCount();
     }
+
+    public function get_genres(){
+
+        $sql = "SELECT * FROM genres ORDER BY id";
+
+        $stmt = $this->conn->query($sql);
+
+        $genres = [];
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach($rows as $row){
+            $genres[] = $row;
+        }
+
+        return $genres;
+
+    }
+
+    public function get_genre_info($id){
+        $sql = "SELECT * FROM genres WHERE id = :id";
+
+        $stmt = $this->conn->prepare($sql);
+
+        $stmt->bindValue(":id",$id,PDO::PARAM_INT);
+
+        $stmt->execute();
+
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $data;
+    }
+
+    public function create_genre(array $data){
+        $sql = "INSERT INTO genres (name,description) VALUES (:name,:description)";
+
+        $stmt = $this->conn->prepare($sql);
+
+        $stmt->bindValue(":name",$data["name"],PDO::PARAM_STR);
+        $stmt->bindValue(":description",$data["description"],PDO::PARAM_STR);
+
+        $stmt->execute();
+
+        return $this->conn->lastInsertId();
+    }
+
+    public function update_genre(array $current, array $given){
+        $sql = "UPDATE genres SET name = :name, description = :description WHERE id = :id";
+
+        $stmt = $this->conn->prepare($sql);
+
+        $stmt->bindValue(":name",$given["name"] ?? $current["name"],PDO::PARAM_STR);
+        $stmt->bindValue(":description",$given["description"] ?? $current["description"],PDO::PARAM_STR);
+
+        $stmt->bindValue(":id",$current["id"],PDO::PARAM_INT);
+
+        $stmt->execute();
+        
+        return $stmt->rowCount();
+
+    }
+
+    public function delete_genre($id){
+        $sql = "DELETE FROM genres WHERE id = :id";
+
+        $stmt = $this->conn->prepare($sql);
+
+        $stmt->bindValue(":id",$id, PDO::PARAM_INT);
+
+        $stmt->execute();
+
+        return $stmt->rowCount();
+    }
+
 
 }
 
