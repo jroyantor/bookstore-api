@@ -28,7 +28,7 @@ class Bookstoregateway
             $name = $data["name"];
 
             $headers = array('alg'=>'HS256','typ'=>'JWT');
-            $payload = array('username'=>$name, 'exp'=>(time() + 600));
+            $payload = array('username'=>$name, 'exp'=>(time() + 1200));
 
             $jwt = $this->token->generate_jwt($headers, $payload);
 
@@ -43,7 +43,7 @@ class Bookstoregateway
 
     public function getBooks(): array 
     {
-        $sql = "SELECT b.title,b.author,b.excerpt,b.price,b.is_available,genres.name as genre FROM books as b INNER JOIN genres
+        $sql = "SELECT b.id,b.title,b.author,b.excerpt,b.genre_id,b.price,b.is_available,genres.name as genre FROM books as b INNER JOIN genres
         ON b.genre_id = genres.id";
 
         $stmt = $this->conn->query($sql);
